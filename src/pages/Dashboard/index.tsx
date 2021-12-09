@@ -1,50 +1,90 @@
-import React from "react";
+import React, {useState, useEffect, FormEvent} from "react";
 import {FiChevronRight} from 'react-icons/fi';
-import {Link} from 'react-router-dom'
+import {Link} from 'react-router-dom';
+import api from '../../services/api';
 
-import {Title, Form, Repositories} from './Style'
+
+import {Title, Form, Repositories, Error} from './Style'
+
+interface Repository{
+    full_name: string;
+    description: string;
+    owner: {
+        login: string;
+        avatar_url:string;
+    }
+
+}
  
 const Dashboard: React.FC = () => {
+    const [newRepo, setNewRepo] = useState('');
+    const [inputError, setInputError] = useState('');
+    const [repositories, setRepositories] = useState<Repository[]>(() => {
+        const StorageRepository = localStorage.getItem(
+            '@GithubExplorer:repositories'
+        );
+
+        if(StorageRepository){
+            return JSON.parse(StorageRepository)
+        }
+
+        return[];
+    });
+
+    const handleAddRepository = async (event: FormEvent <HTMLFormElement>) =>{
+        event.preventDefault();
+
+        if(!newRepo){
+            setInputError("Digite um usuário/reporitório para pesquisar")
+            return;
+        }
+
+    try {
+        const response = await api.get<Repository>(`repos/${newRepo}`);
+        const repository = response.data;
+
+        setRepositories([... repositories, repository])
+        setNewRepo('');
+        setInputError('');
+
+    } catch(err){
+        setNewRepo('');
+        setInputError("Repositorio não encontrado ou existente.");
+    }
+}
+
+    useEffect(() => {
+        localStorage.setItem(
+            '@GitHubExplorer:repositories',
+            JSON.stringify(repositories)
+        )
+    }, [repositories]);
+
     return (
         <>
             <Title>Explore repositórios no GitHub</Title>
-            <Form>
-                <input placeholder= "Digite um nome no repositório"/>
+            <Form onSubmit={handleAddRepository}>
+                <input 
+                    onChange={e => setNewRepo(e.target.value)}
+                    placeholder= "Digite um nome no repositório"
+                />
                 <button type="submit"> Pesquisar</button>
             </Form>
 
+            {inputError && <Error>{inputError}</Error>}
+
             <Repositories>
+                {repositories.map(repository => (
                 <Link to="#">
-                    <img src="https://images.unsplash.com/photo-1600141905113-37c4ddddcba9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OXx8bW9kYXxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60" alt="" />
+                    <img src={repository.owner.avatar_url} alt={repository.owner.login }/>
                     <div>
-                        <strong>projetoReactMalwee</strong>
-                        <p>Oi, tudo bom?</p>
+                        <strong>{repository.full_name}</strong>
+                        <p>{repository.description}</p>
                     </div>
-                    <FiChevronRight/>
+                    <FiChevronRight size={20}/>
 
                 </Link>
-            </Repositories>
-            <Repositories>
-                <Link to="#">
-                    <img src="https://images.unsplash.com/photo-1600141905113-37c4ddddcba9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OXx8bW9kYXxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60" alt="" />
-                    <div>
-                        <strong>projetoReactMalwee</strong>
-                        <p>Oi, tudo bom?</p>
-                    </div>
-                    <FiChevronRight/>
-
-                </Link>
-            </Repositories>
-            <Repositories>
-                <Link to="#">
-                    <img src="https://images.unsplash.com/photo-1600141905113-37c4ddddcba9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OXx8bW9kYXxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60" alt="" />
-                    <div>
-                        <strong>projetoReactMalwee</strong>
-                        <p>Oi, tudo bom?</p>
-                    </div>
-                    <FiChevronRight/>
-
-                </Link>
+                ))}
             </Repositories>
 
         </>
